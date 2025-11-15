@@ -1,55 +1,115 @@
-## 🧰 Prerequisites
+# Prerequisites
 
-Before you begin, make sure you have the following installed:
+Make sure the following tools are installed:
 
-- [Node.js](https://nodejs.org/)
-- [pnpm](https://pnpm.io/installation)
-- [PostgreSQL](https://www.postgresql.org/download/)
-- [Rust](https://www.rust-lang.org/tools/install)
+### **Node.js**
+Download: https://nodejs.org/
+
+### **pnpm**
+```bash
+npm install -g pnpm
+````
+
+### **PostgreSQL**
+
+Download:
+[https://www.postgresql.org/download/](https://www.postgresql.org/download/)
+
+> Windows: Use the installer
+> macOS: Use Homebrew or the official installer
+> Linux: Install via apt/yum (Debian/Ubuntu/Fedora)
+
+### **Rust**
+
+Install from: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
+Or via terminal:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
+
+After installation:
+
+**Load Rust environment:**
+
+macOS/Linux:
+
+```bash
+source $HOME/.cargo/env
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:PATH += "$HOME\.cargo\bin"
+```
 
 ---
-## 🏃 Getting Started
 
-### 1️⃣ Run the Frontend Development Server
+#  Getting Started
+
+##  Run the Frontend Development Server
 
 ```bash
 pnpm dev
 ```
-### PostgreSQL Setup (macOS / Linux)
-Start the PostgreSQL service:
+
+---
+
+#  PostgreSQL Setup
+
+## Start PostgreSQL Service
+
+### **macOS (Homebrew)**:
+
 ```bash
 brew services start postgresql
 ```
-**Check PostgreSQL version:**
+
+### **Linux (systemd)**:
+
+```bash
+sudo systemctl start postgresql
+```
+
+### **Windows**:
+
+Start PostgreSQL from:
+
+```
+Services → PostgreSQL → Start
+```
+
+Or through pgAdmin.
+
+---
+
+## Check PostgreSQL Version
+
 ```bash
 postgres --version
 ```
-### Install and Configure Rust
-**Install Rust:**
+
+---
+
+#  Database Configuration
+
+Set your database connection string:
+
 ```bash
-curl https://sh.rustup.rs -sSf | sh
+DATABASE_URL=postgres://<user>:<password>@localhost:5432/authdb
 ```
-**Load Rust environment for the current session:(making it permanent)**
-```bash
-echo '. "$HOME/.cargo/env"' >> ~/.zshrc
+
+Add this to `.env` file:
+
 ```
-## BUILD THE RUST PROJECT
-**build**
-```bash
-cargo build
-```
-**clean and build if needed**
-```bash
-cargo clean
-cargo build
-```
-### DATABASE CONFIGURATION
-**Set your database connection URL:**
-```bash
 DATABASE_URL=postgres://mukesh1:mukesh123@localhost:5432/authdb
 ```
-- add this to the .env file
-## CREATE TABLE Users
+
+---
+
+#  Create `users` Table
+
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -58,26 +118,38 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
-# GENERATE ENTITIES
+
+---
+
+#  Generate SeaORM Entities
+
 ```bash
 sea-orm-cli generate entity \
   -u postgres://mukesh1:mukesh123@localhost:5432/authdb \
   -o src/entity
 ```
-## Rust Service
 
-- **Build the Rust backend:**
+---
+
+#  Rust Backend
+
+## Build the Rust Project
+
 ```bash
 cargo build
 ```
 
-- **Run the Rust backend:**
+## Run the Rust Service
+
 ```bash
 cargo run
 ```
 
+## Clean Build Artifacts
 
-- **Clean build artifacts:**
 ```bash
 cargo clean
 ```
+
+---
+
