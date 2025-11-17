@@ -11,29 +11,30 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('intro');
 
   return (
-    <>
-      <div className="app">
-        {currentPage === 'intro' && (
-          <IntroPage onEnter={() => setCurrentPage('signin')} />
-        )}
-        {currentPage === 'signin' && (
-          <SignInPage
-            onSignIn={() => setCurrentPage('main')}
-            onNavigateToSignUp={() => setCurrentPage('signup')}
-            onBack={() => setCurrentPage('intro')}
-          />
-        )}
-        {currentPage === 'signup' && (
-          <SignUpPage
-            onSignUp={() => setCurrentPage('main')}
-            onNavigateToSignIn={() => setCurrentPage('signin')}
-            onBack={() => setCurrentPage('intro')}
-          />
-        )}
-        {currentPage === 'main' && <MainPage onSignOut={() => setCurrentPage('intro')} />}
-      </div>
-      
-    </>
+    <div className="app">
+      {currentPage === 'intro' && (
+        <IntroPage onEnter={() => setCurrentPage('signin')} />
+      )}
+
+      {currentPage === 'signin' && (
+        <SignInPage
+          onSignIn={() => setCurrentPage('main')}
+          onNavigateToSignUp={() => setCurrentPage('signup')}
+          onBack={() => setCurrentPage('intro')}
+        />
+      )}
+
+      {currentPage === 'signup' && (
+        <SignUpPage
+          onNavigateToSignIn={() => setCurrentPage('signin')}
+          onBack={() => setCurrentPage('intro')}
+        />
+      )}
+
+      {currentPage === 'main' && (
+        <MainPage onSignOut={() => setCurrentPage('intro')} />
+      )}
+    </div>
   );
 };
 
