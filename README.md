@@ -1,155 +1,214 @@
+# Fincheck.dev
+
+A modern authentication-enabled Next.js application using **Next.js App Router**, **NextAuth (Credentials Provider)**, **Prisma ORM**, and **Supabase PostgreSQL**.
+
+---
+
+##  Tech Stack
+
+- **Next.js 16 (App Router + Turbopack)**
+- **React 19**
+- **NextAuth (Credentials Provider)**
+- **Prisma ORM**
+- **Supabase PostgreSQL**
+- **Tailwind CSS**
+- **pnpm** for dependency management
+
+---
+
 # Prerequisites
 
-Make sure the following tools are installed:
+Install the following before running the project:
 
 ### **Node.js**
-Download: https://nodejs.org/
+Download: https://nodejs.org
 
 ### **pnpm**
 ```bash
 npm install -g pnpm
 ````
 
-### **PostgreSQL**
+---
 
-Download:
-[https://www.postgresql.org/download/](https://www.postgresql.org/download/)
+#  Installation
 
-> Windows: Use the installer
-> macOS: Use Homebrew or the official installer
-> Linux: Install via apt/yum (Debian/Ubuntu/Fedora)
-
-### **Rust**
-
-Install from: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-Or via terminal:
+Clone the repository and install dependencies:
 
 ```bash
-curl https://sh.rustup.rs -sSf | sh
-```
-
-After installation:
-
-**Load Rust environment:**
-
-macOS/Linux:
-
-```bash
-source $HOME/.cargo/env
-```
-
-Windows (PowerShell):
-
-```powershell
-$env:PATH += "$HOME\.cargo\bin"
+git clone <your-repo-url>
+cd fincheck.dev
+pnpm install
 ```
 
 ---
 
-#  Getting Started
+#  Environment Variables
 
-##  Run the Frontend Development Server
+Create a file named:
+
+```
+.env
+```
+
+Add the following:
+
+```env
+DATABASE_URL="postgresql://postgres:<YOUR_PASSWORD>@db.<YOUR-PROJECT-ID>.supabase.co:5432/postgres?sslmode=require"
+DIRECT_URL="postgresql://postgres:<YOUR_PASSWORD>@db.<YOUR-PROJECT-ID>.supabase.co:5432/postgres?sslmode=require"
+
+NEXTAUTH_SECRET="<your-generated-secret>"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+###  IMPORTANT:
+
+Use the **direct database URL (5432)** from Supabase.
+**Do NOT use the PgBouncer pooler URL (6543)** — Prisma will not work with it.
+
+---
+
+# Prisma Setup
+
+Push the schema to your Supabase database:
+
+```bash
+npx prisma db push
+```
+
+Generate Prisma Client:
+
+```bash
+npx prisma generate
+```
+
+(Optional) Open Prisma Studio:
+
+```bash
+npx prisma studio
+```
+
+---
+
+#  Running the App
+
+Start the development server:
 
 ```bash
 pnpm dev
 ```
 
----
+Your app will be available at:
 
-#  PostgreSQL Setup
-
-## Start PostgreSQL Service
-
-### **macOS (Homebrew)**:
-
-```bash
-brew services start postgresql
-```
-
-### **Linux (systemd)**:
-
-```bash
-sudo systemctl start postgresql
-```
-
-### **Windows**:
-
-Start PostgreSQL from:
-
-```
-Services → PostgreSQL → Start
-```
-
-Or through pgAdmin.
+👉 [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Check PostgreSQL Version
+#  Authentication (NextAuth)
 
-```bash
-postgres --version
-```
+This project uses:
 
----
+* **next-auth/credentials** for username/password login
+* **Prisma** as the user store
+* Supabase PostgreSQL as the backend database
 
-#  Database Configuration
-
-Set your database connection string:
-
-```bash
-DATABASE_URL=postgres://<user>:<password>@localhost:5432/authdb
-```
-
-Add this to `.env` file:
+### Signup Route
 
 ```
-DATABASE_URL=postgres://mukesh1:mukesh123@localhost:5432/authdb
+POST /api/signup
+```
+
+### Auth Route
+
+```
+/api/auth/[...nextauth]
+```
+
+### User Table Schema
+
+```prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
 ```
 
 ---
 
-#  Create `users` Table
+#  Makefile (Included)
 
-```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+| Command            | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `make dev`         | Runs the Next.js development server            |
+| `make prisma-push` | Pushes the Prisma schema to Supabase           |
+| `make prisma-gen`  | Generates Prisma Client                        |
+| `make clean`       | Removes `.next` and resets the dev environment |
+
+### Example Makefile
+
+```makefile
+dev:
+	pnpm dev
+
+prisma-push:
+	npx prisma db push
+
+prisma-gen:
+	npx prisma generate
+
+clean:
+	rm -rf .next
 ```
 
 ---
 
-#  Generate SeaORM Entities
+#  Project Structure
 
-```bash
-sea-orm-cli generate entity \
-  -u postgres://mukesh1:mukesh123@localhost:5432/authdb \
-  -o src/entity
 ```
+fincheck.dev git:(main) tree
+.
+├── CONTRIBUTING.md
+├── Dockerfile
+├── Makefile
+├── README.md
+├── app
+│   ├── IntroPage.tsx
+│   ├── MainPage.tsx
+│   ├── SignInPage.tsx
+│   ├── SignUpPage.tsx
+│   ├── api
+│   │   ├── auth
+│   │   │   └── [...nextauth]
+│   │   │       └── route.ts
+│   │   └── signup
+│   │       └── route.ts
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── biome.json
+├── docker-compose.yml
+├── eslint.config.mjs
+├── lib
+│   └── prisma.ts
+├── next-env.d.ts
+├── next.config.ts
+├── node_modules
+│  
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── prisma
+│   ├── migrations
+│   │   ├── 20251117051417_init
+│   │   │   └── migration.sql
+│   │   └── migration_lock.toml
+│   └── schema.prisma
+├── tsconfig.json
+└── types
+    └── next-auth.d.ts
 
----
-
-#  Rust Backend
-
-## Build the Rust Project
-
-```bash
-cargo build
+36 directories, 28 files
+➜  fincheck.dev git:(main) 
 ```
-
-## Run the Rust Service
-
-```bash
-cargo run
-```
-
-## Clean Build Artifacts
-
-```bash
-cargo clean
-```
-
----
-
