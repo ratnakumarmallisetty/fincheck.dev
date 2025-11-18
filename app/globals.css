@@ -1,3 +1,5 @@
+@import "tailwindcss";
+@import "flowbite";
 
 * {
     margin: 0;
@@ -146,7 +148,7 @@ body {
   .group-label {
     font-size: 20px;
   }
-  
+
   .member-id {
     font-size: 18px;
     padding: 12px 28px;
@@ -157,7 +159,7 @@ body {
   .group-label {
     font-size: 18px;
   }
-  
+
   .member-id {
     font-size: 16px;
     padding: 10px 24px;
@@ -363,23 +365,23 @@ body {
     .content-card {
     padding: 40px 30px;
     }
-    
+
     .auth-card {
     padding: 35px 30px;
     }
-    
+
     .main-title {
     font-size: 36px;
     }
-    
+
     .auth-title {
     font-size: 26px;
     }
-    
+
     .welcome-title {
     font-size: 28px;
     }
-    
+
     .back-button {
     top: 20px;
     left: 20px;
@@ -392,23 +394,23 @@ body {
     .page-container {
     padding: 15px;
     }
-    
+
     .content-card {
     padding: 30px 20px;
     }
-    
+
     .auth-card {
     padding: 30px 20px;
     }
-    
+
     .main-title {
     font-size: 32px;
     }
-    
+
     .auth-title {
     font-size: 24px;
     }
-    
+
     .back-button {
     top: 15px;
     left: 15px;
