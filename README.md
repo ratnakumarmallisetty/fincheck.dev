@@ -87,6 +87,11 @@ npx prisma generate
 npx prisma studio
 ```
 
+On cloning:
+```zsh
+pnpm install
+pnpm prisma generate
+```
 ---
 
 #  Running the App
