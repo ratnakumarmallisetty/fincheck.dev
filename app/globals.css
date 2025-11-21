@@ -27,36 +27,36 @@ body {
 }
 
 .signout-button {
-  position: absolute;
-  top: 30px;
-  right: 30px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .signout-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateX(3px);
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateX(3px);
 }
 
 .signout-button svg {
-  transition: transform 0.3s ease;
+    transition: transform 0.3s ease;
 }
 
 .signout-button:hover svg {
-  transform: translateX(3px);
+    transform: translateX(3px);
 }
 
 .back-button {
@@ -105,68 +105,210 @@ body {
 }
 
 .info-section {
-  margin-bottom: 15px;
+    margin-bottom: 15px;
 }
 
 .group-label {
-  font-size: 24px;
-  font-weight: 600;
-  color: #7eb8c4;
-  margin-bottom: 20px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+    font-size: 24px;
+    font-weight: 600;
+    color: #7eb8c4;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .member-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
 }
 
 .member-id {
-  font-size: 15px;
-  font-weight: 500;
-  color: #4a7c87;
-  padding: 14px 32px;
-  background: linear-gradient(135deg, #f8fbfc 0%, #e8f1f3 100%);
-  border-radius: 12px;
-  border: 2px solid #d4e5e8;
-  min-width: 200px;
-  transition: all 0.3s ease;
-  letter-spacing: 0.5px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #4a7c87;
+    padding: 14px 32px;
+    background: linear-gradient(135deg, #f8fbfc 0%, #e8f1f3 100%);
+    border-radius: 12px;
+    border: 2px solid #d4e5e8;
+    min-width: 200px;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
 }
 
 .member-id:hover {
-  transform: translateY(-3px);
-  border-color: #7eb8c4;
-  box-shadow: 0 8px 20px rgba(126, 184, 196, 0.2);
-  background: linear-gradient(135deg, #ffffff 0%, #f8fbfc 100%);
+    transform: translateY(-3px);
+    border-color: #7eb8c4;
+    box-shadow: 0 8px 20px rgba(126, 184, 196, 0.2);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbfc 100%);
 }
 
-@media (max-width: 768px) {
-  .group-label {
-    font-size: 20px;
-  }
+/* Bank Portal Styles */
+.portal-container {
+    background-color: #ffffff;
+    border-radius: 20px;
+    padding: 50px 60px;
+    box-shadow: 0 25px 70px rgba(7, 16, 19, 0.3);
+    max-width: 800px;
+    width: 100%;
+    border: 1px solid rgba(126, 184, 196, 0.2);
+    animation: fadeIn 0.5s ease-in;
+}
 
-  .member-id {
+.portal-heading {
+    font-size: 36px;
+    font-weight: 700;
+    color: #071013;
+    margin-bottom: 40px;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+.upload-area {
+    border: 3px dashed #d4e5e8;
+    border-radius: 12px;
+    padding: 50px 30px;
+    text-align: center;
+    background-color: #fafcfd;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 30px;
+}
+
+.upload-area.dragging {
+    border-color: #7eb8c4;
+    background-color: #f8fbfc;
+}
+
+.upload-area:hover {
+    border-color: #7eb8c4;
+    background-color: #f8fbfc;
+}
+
+.upload-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    color: #7eb8c4;
+    display: block;
+}
+
+.upload-text {
     font-size: 18px;
+    font-weight: 600;
+    color: #071013;
+    margin-bottom: 8px;
+}
+
+.upload-subtext {
+    font-size: 14px;
+    color: #4a7c87;
+    margin-bottom: 20px;
+}
+
+.file-input {
+    display: none;
+}
+
+.select-file-button {
     padding: 12px 28px;
-  }
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #7eb8c4 0%, #4a7c87 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(126, 184, 196, 0.3);
 }
 
-@media (max-width: 480px) {
-  .group-label {
-    font-size: 18px;
-  }
+.select-file-button:hover {
+    background: linear-gradient(135deg, #6aa5b1 0%, #3d6972 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(126, 184, 196, 0.4);
+}
 
-  .member-id {
+.selected-file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background-color: #e8f1f3;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #071013;
+    justify-content: center;
+}
+
+.details-group {
+    margin-bottom: 30px;
+}
+
+.details-label {
+    display: block;
     font-size: 16px;
-    padding: 10px 24px;
-    min-width: 170px;
-  }
+    font-weight: 600;
+    color: #071013;
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
+    text-align: left;
 }
 
+.details-textarea {
+    width: 100%;
+    padding: 16px;
+    font-size: 15px;
+    border-radius: 10px;
+    border: 2px solid #d4e5e8;
+    background-color: #f8fbfc;
+    color: #071013;
+    outline: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    min-height: 120px;
+    resize: vertical;
+}
+
+.details-textarea:focus {
+    border-color: #7eb8c4;
+    box-shadow: 0 0 0 4px rgba(126, 184, 196, 0.1);
+    background-color: #ffffff;
+}
+
+.details-textarea::placeholder {
+    color: #9db5bb;
+}
+
+.submit-document-button {
+    width: 100%;
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #7eb8c4 0%, #4a7c87 100%);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(126, 184, 196, 0.3);
+}
+
+.submit-document-button:hover {
+    background: linear-gradient(135deg, #6aa5b1 0%, #3d6972 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(126, 184, 196, 0.4);
+}
+
+.submit-document-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(126, 184, 196, 0.3);
+}
+
+/* Auth Card Styles */
 .auth-card {
     background-color: #ffffff;
     border-radius: 20px;
@@ -352,69 +494,123 @@ body {
 
 @keyframes fadeIn {
     from {
-    opacity: 0;
-    transform: translateY(20px);
+        opacity: 0;
+        transform: translateY(20px);
     }
     to {
-    opacity: 1;
-    transform: translateY(0);
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
+/* Responsive Styles */
 @media (max-width: 768px) {
+    .group-label {
+        font-size: 20px;
+    }
+
+    .member-id {
+        font-size: 18px;
+        padding: 12px 28px;
+    }
+
+    .portal-container {
+        padding: 40px 30px;
+    }
+
+    .portal-heading {
+        font-size: 28px;
+    }
+
     .content-card {
-    padding: 40px 30px;
+        padding: 40px 30px;
     }
 
     .auth-card {
-    padding: 35px 30px;
+        padding: 35px 30px;
     }
 
     .main-title {
-    font-size: 36px;
+        font-size: 36px;
     }
 
     .auth-title {
-    font-size: 26px;
+        font-size: 26px;
     }
 
     .welcome-title {
-    font-size: 28px;
+        font-size: 28px;
+    }
+
+    .back-button, .signout-button {
+        top: 20px;
+        padding: 10px 18px;
+        font-size: 14px;
     }
 
     .back-button {
-    top: 20px;
-    left: 20px;
-    padding: 10px 18px;
-    font-size: 14px;
+        left: 20px;
+    }
+
+    .signout-button {
+        right: 20px;
     }
 }
 
 @media (max-width: 480px) {
+    .group-label {
+        font-size: 18px;
+    }
+
+    .member-id {
+        font-size: 16px;
+        padding: 10px 24px;
+        min-width: 170px;
+    }
+
     .page-container {
-    padding: 15px;
+        padding: 15px;
+    }
+
+    .portal-container {
+        padding: 30px 20px;
+    }
+
+    .portal-heading {
+        font-size: 24px;
+    }
+
+    .upload-area {
+        padding: 40px 20px;
     }
 
     .content-card {
-    padding: 30px 20px;
+        padding: 30px 20px;
     }
 
     .auth-card {
-    padding: 30px 20px;
+        padding: 30px 20px;
     }
 
     .main-title {
-    font-size: 32px;
+        font-size: 32px;
     }
 
     .auth-title {
-    font-size: 24px;
+        font-size: 24px;
+    }
+
+    .back-button, .signout-button {
+        top: 15px;
+        padding: 8px 16px;
+        font-size: 14px;
     }
 
     .back-button {
-    top: 15px;
-    left: 15px;
-    padding: 8px 16px;
-    font-size: 14px;
+        left: 15px;
+    }
+
+    .signout-button {
+        right: 15px;
     }
 }
