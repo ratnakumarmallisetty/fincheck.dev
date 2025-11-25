@@ -2,18 +2,18 @@
 
 ## 1. Architecture & Planning
 - [ ] Create system architecture diagram
-- [ ] Draft database schema:
+<!-- - [ ] Draft database schema:
   - [ ] User
   - [ ] Model
   - [ ] BenchmarkRun
   - [ ] ImageUploads
-  - [ ] SystemMetrics
+  - [ ] SystemMetrics -->
 
-## 2. Authentication (Backend)
+<!-- ## 2. Authentication (Backend)
 - [ ] Decide authentication method (JWT or NextAuth)
 - [ ] Implement signup API
 - [ ] Implement login API
-- [ ] Add token/session verification middleware
+- [ ] Add token/session verification middleware -->
 
 ## 3. Image Upload System
 - [ ] Build upload UI (Next.js)
@@ -22,11 +22,11 @@
 - [ ] Save file to storage
 - [ ] Store upload metadata in database
 
-## 4. UI Improvements
+<!-- ## 4. UI Improvements
 - [ ] Polish login page UI
 - [ ] Polish signup page UI
 - [ ] Add loading states
-- [ ] Add error messages
+- [ ] Add error messages -->
 
 ## 5. Backend Stability
 - [ ] Configure FastAPI logging
