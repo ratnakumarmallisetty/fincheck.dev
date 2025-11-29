@@ -7,16 +7,6 @@
     "build": "next build",
     "start": "next start"
   },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
-    }
-  },
-  "formatter": {
-    "enabled": true,
-    "useEditorconfig": true
-  },
   "dependencies": {
     "@prisma/client": "6",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -30,6 +20,7 @@
     "next": "16.0.1",
     "next-auth": "^4.24.13",
     "pg": "^8.16.3",
+    "rate-limiter-flexible": "^8.3.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

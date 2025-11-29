@@ -2,6 +2,17 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { RateLimiterMemory } from "rate-limiter-flexible";
+
+const ipLimiter = new RateLimiterMemory({
+  points: 20,
+  duration: 60 * 15,
+});
+
+const usernameLimiter = new RateLimiterMemory({
+  points: 5,
+  duration: 60 * 15,
+});
 
 const handler = NextAuth({
   session: { strategy: "jwt" },
@@ -14,19 +25,46 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
 
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials.password) return null;
+      async authorize(credentials, req) {
+        // ---- FIXED: Safe header + IP extraction ----
+        const forwarded = req?.headers?.["x-forwarded-for"];
+        const ip =
+          (Array.isArray(forwarded) ? forwarded[0] : forwarded) ||
+          (req as any)?.ip ||
+          "0.0.0.0";
+
+        const username = credentials?.username;
+
+        try {
+          await ipLimiter.consume(ip);
+        } catch {
+          return null;
+        }
+
+        try {
+          if (username) await usernameLimiter.consume(username);
+        } catch {
+          return null;
+        }
+
+        if (!username || !credentials.password) return null;
 
         const user = await prisma.user.findUnique({
-          where: { username: credentials.username },
+          where: { username },
         });
 
         if (!user) return null;
 
-        const valid = await bcrypt.compare(credentials.password, user.password);
+        const valid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
         if (!valid) return null;
 
-        // ✔ Return the shape expected by your extended NextAuth types
+        ipLimiter.delete(ip);
+        usernameLimiter.delete(username);
+
         return {
           id: String(user.id),
           username: user.username,
@@ -39,7 +77,7 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.username = user.username; // ✔ match returned fields
+        token.username = user.username;
       }
       return token;
     },
@@ -48,7 +86,7 @@ const handler = NextAuth({
       if (token) {
         session.user = {
           id: token.id,
-          username: token.username, // ✔ match returned fields
+          username: token.username,
         };
       }
       return session;
