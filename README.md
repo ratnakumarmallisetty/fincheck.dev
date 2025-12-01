@@ -1,38 +1,67 @@
-# Fincheck.dev
+Here is your **complete, production-ready `README.md` file**, fully updated for your **MongoDB + Next.js + NextAuth** stack.
 
-A modern authentication-enabled Next.js application using **Next.js App Router**, **NextAuth (Credentials Provider)**, **Prisma ORM**, and **Supabase PostgreSQL**.
-
----
-
-##  Tech Stack
-
-- **Next.js 16 (App Router + Turbopack)**
-- **React 19**
-- **NextAuth (Credentials Provider)**
-- **Prisma ORM**
-- **Supabase PostgreSQL**
-- **Tailwind CSS**
-- **pnpm** for dependency management
+You can **copy/paste this directly into your repo**.
 
 ---
 
-# Prerequisites
+# 📘 **Fincheck.dev**
 
-Install the following before running the project:
+Fincheck.dev is a modern financial tracking and authentication-enabled application built using:
+
+* **Next.js 16 (App Router + Turbopack)**
+* **React 19**
+* **NextAuth (Credentials Provider)**
+* **MongoDB Atlas**
+* **Tailwind CSS**
+* **pnpm**
+
+It includes user authentication, signup/signin flows, and a clean modular structure.
+
+---
+
+# 🚀 Tech Stack
+
+### **Frontend / Fullstack**
+
+* Next.js App Router
+* React 19
+* Tailwind CSS
+* NextAuth Credentials Provider
+
+### **Database**
+
+* MongoDB Atlas
+* MongoDB Native Driver (high performance, no ORM overhead)
+
+### **Tooling**
+
+* pnpm
+* Biome (lint + format)
+* TypeScript
+
+---
+
+# 📦 Prerequisites
+
+Make sure you have:
 
 ### **Node.js**
-Download: https://nodejs.org
+
+[https://nodejs.org](https://nodejs.org)
 
 ### **pnpm**
+
 ```bash
 npm install -g pnpm
-````
+```
+
+### **MongoDB Atlas Cluster**
+
+Create one free at: [https://www.mongodb.com/atlas](https://www.mongodb.com/atlas)
 
 ---
 
-#  Installation
-
-Clone the repository and install dependencies:
+# 🔧 Installation
 
 ```bash
 git clone <your-repo-url>
@@ -42,231 +71,195 @@ pnpm install
 
 ---
 
-#  Environment Variables
+# 🔑 Environment Variables
 
-Create a file named:
-
-```
-.env
-```
-
-Add the following:
+Create a file named `.env` in the project root:
 
 ```env
-DATABASE_URL="postgresql://postgres:<YOUR_PASSWORD>@db.<YOUR-PROJECT-ID>.supabase.co:5432/postgres?sslmode=require"
-DIRECT_URL="postgresql://postgres:<YOUR_PASSWORD>@db.<YOUR-PROJECT-ID>.supabase.co:5432/postgres?sslmode=require"
+# MongoDB
+MONGODB_URI="mongodb+srv://<USER>:<PASSWORD>@<CLUSTER>.mongodb.net/"
+MONGODB_DB="finalyear"
 
-NEXTAUTH_SECRET="<your-generated-secret>"
+# NextAuth
+NEXTAUTH_SECRET="<your-secret>"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-###  IMPORTANT:
+### Generate a secure secret:
 
-Use the **direct database URL (5432)** from Supabase.
-**Do NOT use the PgBouncer pooler URL (6543)** — Prisma will not work with it.
+```bash
+openssl rand -base64 32
+```
 
 ---
 
-# Prisma Setup
+# 🗄 MongoDB Setup
 
-Push the schema to your Supabase database:
+This project uses the **native MongoDB driver** for maximum speed and flexibility.
 
-```bash
-npx prisma db push
+#### `lib/mongodb.ts`
+
+```ts
+import { MongoClient } from "mongodb";
+
+const uri = process.env.MONGODB_URI!;
+declare global {
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
+
+if (process.env.NODE_ENV === "development") {
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri);
+    global._mongoClientPromise = client.connect();
+  }
+  clientPromise = global._mongoClientPromise;
+} else {
+  client = new MongoClient(uri);
+  clientPromise = client.connect();
+}
+
+export default clientPromise;
 ```
-
-Generate Prisma Client:
-
-```bash
-npx prisma generate
-```
-
-(Optional) Open Prisma Studio:
-
-```bash
-npx prisma studio
-```
-
-On cloning:
-```zsh
-pnpm install
-pnpm prisma generate
-```
----
-
-#  Running the App
-
-Start the development server:
-
-```bash
-pnpm dev
-```
-
-Your app will be available at:
-
-👉 [http://localhost:3000](http://localhost:3000)
 
 ---
 
-#  Authentication (NextAuth)
+# 🔐 Authentication (NextAuth)
 
-This project uses:
+Authentication uses **next-auth/credentials** with MongoDB.
 
-* **next-auth/credentials** for username/password login
-* **Prisma** as the user store
-* Supabase PostgreSQL as the backend database
-
-### Signup Route
-
-```
-POST /api/signup
-```
-
-### Auth Route
+### Route:
 
 ```
 /api/auth/[...nextauth]
 ```
 
-### User Table Schema
+### Example authorize logic:
 
-```prisma
-model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  createdAt DateTime @default(now())
+```ts
+import bcrypt from "bcryptjs";
+import clientPromise from "@/lib/mongodb";
+import Credentials from "next-auth/providers/credentials";
+import NextAuth from "next-auth";
+
+const handler = NextAuth({
+  session: { strategy: "jwt" },
+
+  providers: [
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        username: { type: "text" },
+        password: { type: "password" }
+      },
+
+      async authorize(credentials) {
+        if (!credentials) return null;
+
+        const client = await clientPromise;
+        const db = client.db(process.env.MONGODB_DB);
+        const users = db.collection("users");
+
+        const user = await users.findOne({ username: credentials.username });
+        if (!user) return null;
+
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) return null;
+
+        return { id: user._id.toString(), username: user.username };
+      }
+    })
+  ],
+
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.username = user.username;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      session.user = { id: token.id, username: token.username };
+      return session;
+    },
+  },
+});
+
+export { handler as GET, handler as POST };
+```
+
+---
+
+# 📝 Signup Route
+
+```
+POST /api/signup
+```
+
+```ts
+import clientPromise from "@/lib/mongodb";
+import bcrypt from "bcryptjs";
+
+export async function POST(req: Request) {
+  const { username, password } = await req.json();
+
+  const client = await clientPromise;
+  const db = client.db(process.env.MONGODB_DB);
+  const users = db.collection("users");
+
+  const exists = await users.findOne({ username });
+  if (exists) return new Response("Username already exists", { status: 400 });
+
+  const hash = await bcrypt.hash(password, 10);
+
+  const result = await users.insertOne({
+    username,
+    password: hash,
+    createdAt: new Date(),
+  });
+
+  return Response.json({ success: true, userId: result.insertedId });
 }
 ```
----
-
-#  Backend Setup (FastAPI + uv)
-
-### 1) Install `uv`
-
-```bash
-pip install uv
-```
-
-### 2) Create a virtual environment
-
-```bash
-cd backend
-uv venv
-```
-
-###  3) Install FastAPI & Uvicorn
-
-```bash
-uv pip install fastapi "uvicorn[standard]"
-```
-
-###  4) Save dependencies
-
-```bash
-uv pip freeze > requirements.txt
-```
-
-###  5) Example `main.py`
-
-```python
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def home():
-    return {"message": "FastAPI is running 🚀"}
-```
-
-### ▶️ Run the server
-
-```bash
-uv run uvicorn main:app --reload
-```
 
 ---
 
-###  Tip
+# ▶️ Running the App
 
-You do **not need to activate the venv manually** when using `uv`.
-Just run using `uv run`.
+Start development server:
+
+```bash
+pnpm dev
+```
+
+Open:
+
+👉 [http://localhost:3000](http://localhost:3000)
 
 ---
 
-#  Makefile (Included)
-
-| Command            | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `make dev`         | Runs the Next.js development server            |
-| `make prisma-push` | Pushes the Prisma schema to Supabase           |
-| `make prisma-gen`  | Generates Prisma Client                        |
-| `make clean`       | Removes `.next` and resets the dev environment |
-
-### Example Makefile
-
-```makefile
-dev:
-	pnpm dev
-
-prisma-push:
-	npx prisma db push
-
-prisma-gen:
-	npx prisma generate
-
-clean:
-	rm -rf .next
-```
-
----
-
-#  Project Structure
+# 📁 Project Structure
 
 ```
-fincheck.dev git:(main) tree
-.
-├── CONTRIBUTING.md
-├── Dockerfile
-├── Makefile
-├── README.md
+fincheck.dev
 ├── app
-│   ├── IntroPage.tsx
-│   ├── MainPage.tsx
-│   ├── SignInPage.tsx
-│   ├── SignUpPage.tsx
 │   ├── api
-│   │   ├── auth
-│   │   │   └── [...nextauth]
-│   │   │       └── route.ts
-│   │   └── signup
-│   │       └── route.ts
-│   ├── favicon.ico
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── biome.json
-├── docker-compose.yml
-├── eslint.config.mjs
+│   │   ├── auth/[...nextauth]/route.ts
+│   │   └── signup/route.ts
+│   ├── intro/page.tsx
+│   ├── sign-in/page.tsx
+│   ├── sign-up/page.tsx
+│   ├── main/page.tsx
+│   └── layout.tsx
 ├── lib
-│   └── prisma.ts
-├── next-env.d.ts
-├── next.config.ts
-├── node_modules
-│
+│   └── mongodb.ts
+├── types
+│   └── next-auth.d.ts
+├── README.md
 ├── package.json
-├── pnpm-lock.yaml
-├── postcss.config.mjs
-├── prisma
-│   ├── migrations
-│   │   ├── 20251117051417_init
-│   │   │   └── migration.sql
-│   │   └── migration_lock.toml
-│   └── schema.prisma
-├── tsconfig.json
-└── types
-    └── next-auth.d.ts
-
-36 directories, 28 files
-➜  fincheck.dev git:(main)
+└── pnpm-lock.yaml
 ```
+
