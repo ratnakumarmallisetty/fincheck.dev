@@ -4,81 +4,99 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 import aiofiles
+import json
 
-app = FastAPI(title="FASTAPI BACKEND", version="1.0.0")
+from msgqueue.connection import get_connection
+import pika
 
-# Allowed image types
+app = FastAPI(title="FASTAPI BACKEND", version="1.1.0")
+
 ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-
-# Max file size = 5 MB
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
-#cors
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # in production, set your domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# Home page
 @app.get("/")
 def home():
     return {"message": "FastAPI is running.."}
 
 
-# Health check
 @app.get("/health")
 def health_check():
     return {"message": "ok", "service": "backend"}
 
 
+def publish_inference_job(job_id: str, filepath: str):
+    try:
+        conn = get_connection()
+        ch = conn.channel()
+
+        ch.queue_declare(queue="model_queue", durable=True)
+
+        msg = json.dumps({"job_id": job_id, "filepath": filepath})
+
+        ch.basic_publish(
+            exchange="",
+            routing_key="model_queue",
+            body=msg,
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+
+        print(f"[Backend] Job published → {job_id}")
+        conn.close()
+
+    except Exception as e:
+        print("[Backend] Error publishing:", e)
+        raise HTTPException(status_code=500, detail="Message queue error")
+
+
 @app.post("/upload-image")
 async def image_upload(file: UploadFile = File(...)):
-    #  Validate extension/type
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail="Invalid image type..")
+        raise HTTPException(status_code=400, detail="Invalid image type")
 
-    #  Validate by reading chunks
     total_size = 0
-    CHUNK_SIZE = 1024 * 1024  # 1 MB per chunk
+    CHUNK_SIZE = 1024 * 1024
 
     while chunk := await file.read(CHUNK_SIZE):
         total_size += len(chunk)
         if total_size > MAX_FILE_SIZE:
-            raise HTTPException(status_code=400, detail="Exceeding max file size..")
+            raise HTTPException(status_code=400, detail="File exceeds max size 5MB")
 
-    # Reset cursor to re-read file for saving
     await file.seek(0)
 
-    #  Save file to uploads folder
     ext = file.filename.split(".")[-1]
     saved_name = f"{uuid.uuid4()}.{ext}"
-    saved_path = os.path.join("uploads", saved_name)
-
-    os.makedirs("uploads", exist_ok=True)
+    saved_path = os.path.join(UPLOAD_DIR, saved_name)
 
     async with aiofiles.open(saved_path, "wb") as f:
         while chunk := await file.read(CHUNK_SIZE):
             await f.write(chunk)
 
-    #  Metadata
-    metadata = {
-        "original_name": file.filename,
-        "saved_name": saved_name,
-        "mime_type": file.content_type,
-        "size_bytes": total_size,
-        "path": saved_path,
-    }
-
     await file.close()
 
-    return JSONResponse(
-        status_code=201,
-        content={"message": "Image upload successful", "metadata": metadata},
-    )
+    job_id = str(uuid.uuid4())
+    publish_inference_job(job_id, saved_path)
+
+    return {
+        "message": "Image uploaded successfully",
+        "job_id": job_id,
+        "filepath": saved_path,
+        "mime_type": file.content_type,
+        "size": total_size,
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
