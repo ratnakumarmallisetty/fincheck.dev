@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 from msgqueue.connection import get_connection
+from benchmarking.cpu_gpu_monitor import get_usage  
 
 
 class SmallCNN(nn.Module):
@@ -57,7 +58,7 @@ def load_model(path, device):
 
     try:
         model.load_state_dict(ck)
-    except:
+    except:  # noqa: E722
         ck = {k.replace("module.", ""): v for k, v in ck.items()}
         model.load_state_dict(ck)
 
@@ -74,6 +75,10 @@ print("[Worker] Loaded model successfully")
 
 
 def run_inference(filepath):
+    # Collect system usage BEFORE inference
+    usage_before = get_usage()
+
+    # Run model inference
     img = Image.open(filepath).convert("RGB")
     tensor = preprocess(img).unsqueeze(0).to(DEVICE)
 
@@ -82,13 +87,24 @@ def run_inference(filepath):
         probs = F.softmax(logits, dim=1)[0].cpu().tolist()
         pred = int(torch.argmax(logits).item())
 
-    return {"class": pred, "probabilities": probs}
+    # Collect system usage AFTER inference
+    usage_after = get_usage()
+
+    # Return prediction + hardware data
+    return {
+        "class": pred,
+        "probabilities": probs,
+        "usage": {
+            "before": usage_before,
+            "after": usage_after
+        }
+    }
 
 
 def save_result(job_id, data):
     out_path = os.path.join(BENCHMARK_DIR, f"{job_id}.json")
     with open(out_path, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
 
 
 def callback(ch, method, properties, body):
