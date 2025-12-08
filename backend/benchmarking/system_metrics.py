@@ -2,6 +2,9 @@ import psutil
 import subprocess
 import json
 import shutil
+from ..benchmarking.calc_flops import calculate_flops
+from ..benchmarking.model_size import get_model_size
+from ..benchmarking.get_memory_footprint import get_memory_footprint
 
 def get_gpu_metrics():
     if shutil.which("nvidia-smi") is None:
@@ -26,9 +29,18 @@ def get_gpu_metrics():
 
 
 def get_system_metrics():
+    flops_metrics = calculate_flops()
+    model_size = get_model_size()
+    memory_foot = get_memory_footprint()
     return {
         "cpu_percent": psutil.cpu_percent(interval=0.1),
         "ram_percent": psutil.virtual_memory().percent,
         "gpu": get_gpu_metrics(),
+        "no_of_flops": flops_metrics["flops"],
+        "parameters": flops_metrics["params"],
+        "model_size":model_size["model_size_mb"],
+        "memory_footprint_mb": memory_foot["memory_mb"],
     }
+
+
 
