@@ -1,43 +1,20 @@
+# msgqueue/worker1.py
 import json
 import os
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import transforms
 from PIL import Image
+from torchvision import transforms
+
 from msgqueue.connection import get_connection
-from benchmarking.cpu_gpu_monitor import get_usage  
+from msgqueue.model_registry import get_model
+from benchmarking.system_metrics import get_system_metrics
+from benchmarking.health_checks import check_message_queue, check_model_registry
+from benchmarking.store_metrics import store_metrics
 
-
-class SmallCNN(nn.Module):
-    def __init__(self, num_classes=10):
-        super().__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1,1)),
-        )
-        self.fc = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        x = self.features(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-        return x
-
-
-CHECKPOINT_PATH = "models/model_best.pth"
-BENCHMARK_DIR = "benchmarking_results"
-os.makedirs(BENCHMARK_DIR, exist_ok=True)
+# Base paths
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR_STD = (0.2023, 0.1994, 0.2010)
@@ -48,37 +25,13 @@ preprocess = transforms.Compose([
     transforms.Normalize(mean=CIFAR_MEAN, std=CIFAR_STD),
 ])
 
-
-def load_model(path, device):
-    model = SmallCNN(num_classes=10)
-    ck = torch.load(path, map_location=device)
-
-    if isinstance(ck, dict) and "student_state" in ck:
-        ck = ck["student_state"]
-
-    try:
-        model.load_state_dict(ck)
-    except:  # noqa: E722
-        ck = {k.replace("module.", ""): v for k, v in ck.items()}
-        model.load_state_dict(ck)
-
-    model.to(device)
-    model.eval()
-    return model
-
-
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("[Worker] Using device:", DEVICE)
-
-model = load_model(CHECKPOINT_PATH, DEVICE)
-print("[Worker] Loaded model successfully")
+DEFAULT_MODEL = "model_best.pth"
 
 
-def run_inference(filepath):
-    # Collect system usage BEFORE inference
-    usage_before = get_usage()
+def run_inference(filepath, model):
+    usage_before = get_system_metrics()
 
-    # Run model inference
     img = Image.open(filepath).convert("RGB")
     tensor = preprocess(img).unsqueeze(0).to(DEVICE)
 
@@ -87,57 +40,108 @@ def run_inference(filepath):
         probs = F.softmax(logits, dim=1)[0].cpu().tolist()
         pred = int(torch.argmax(logits).item())
 
-    # Collect system usage AFTER inference
-    usage_after = get_usage()
+    usage_after = get_system_metrics()
 
-    # Return prediction + hardware data
     return {
         "class": pred,
         "probabilities": probs,
         "usage": {
             "before": usage_before,
-            "after": usage_after
+            "after": usage_after,
         }
     }
 
 
-def save_result(job_id, data):
-    out_path = os.path.join(BENCHMARK_DIR, f"{job_id}.json")
-    with open(out_path, "w") as f:
-        json.dump(data, f, indent=2)
+def build_metrics_dict(job_id, extra: dict | None = None):
+    data = {
+        "job_id": job_id,
+        "system_usage": get_system_metrics(),
+        "registry": check_model_registry(),
+        "message_queue": check_message_queue(),
+    }
+    if extra:
+        data.update(extra)
+    return data
+
+
+def _normalize_filepath(raw_path: str) -> str:
+    """
+    Handle both:
+    - old jobs with relative path "uploads/xyz.png"
+    - new jobs with absolute path "/Users/.../uploads/xyz.png"
+    """
+    if os.path.isabs(raw_path):
+        return raw_path
+
+    # If it's relative (e.g. 'uploads/xyz.png'), force it under backend/uploads
+    return os.path.abspath(os.path.join(BASE_DIR, raw_path))
 
 
 def callback(ch, method, properties, body):
     data = json.loads(body)
-    job_id = data["job_id"]
-    filepath = data["filepath"]
+    job_id = data.get("job_id")
+    raw_path = data.get("filepath")
 
     print(f"[Worker] Received job: {job_id}")
+    print(f"[Worker] Raw filepath from message: {raw_path}")
 
-    result = run_inference(filepath)
-    save_result(job_id, result)
+    filepath = _normalize_filepath(raw_path)
+    print(f"[Worker] Normalized filepath: {filepath}")
 
-    print(f"[Worker] Job {job_id} DONE → Class: {result['class']}")
+    # If file does not exist, DON'T crash the worker → just log, store metrics, ack, and move on
+    if not os.path.exists(filepath):
+        print(f"[Worker] File not found, skipping job {job_id}: {filepath}")
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+        metrics = build_metrics_dict(job_id, extra={
+            "error": "file_not_found",
+            "filepath": filepath,
+        })
+        store_metrics(job_id, metrics)
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        return
+
+    try:
+        model = get_model(DEFAULT_MODEL, DEVICE)
+        result = run_inference(filepath, model)
+
+        metrics = build_metrics_dict(job_id)
+        store_metrics(job_id, metrics)
+
+        print(f"[Worker] Job {job_id} DONE → Class: {result['class']}")
+
+    except Exception as e:
+        # Catch any unexpected error so the worker thread never dies
+        print(f"[Worker] Error while processing job {job_id}: {e}")
+
+        metrics = build_metrics_dict(job_id, extra={
+            "error": str(e),
+            "filepath": filepath,
+        })
+        store_metrics(job_id, metrics)
+
+    finally:
+        # Always ack so bad jobs don't get re-delivered forever
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-def main():
+def start_worker():
+    """This function is called by main.py to start the worker in a background thread."""
+    print("[Worker] Starting worker...")
+    print(f"[Worker] BASE_DIR = {BASE_DIR}")
+    print(f"[Worker] UPLOAD_DIR = {UPLOAD_DIR}")
+
     conn = get_connection()
     ch = conn.channel()
-
     ch.queue_declare(queue="model_queue", durable=True)
+
     print("[Worker] Waiting for jobs...")
 
     ch.basic_qos(prefetch_count=1)
-    ch.basic_consume(
-        queue="model_queue",
-        on_message_callback=callback,
-        auto_ack=False
-    )
+    ch.basic_consume(queue="model_queue", on_message_callback=callback)
 
     ch.start_consuming()
 
 
 if __name__ == "__main__":
-    main()
+    start_worker()
