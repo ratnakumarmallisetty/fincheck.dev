@@ -8,8 +8,8 @@ from torchvision import transforms
 
 from msgqueue.connection import get_connection
 from msgqueue.model_registry import get_model
-from benchmarking.system_metrics import get_system_metrics
-from benchmarking.health_checks import check_message_queue, check_model_registry
+
+from benchmarking.metrics_manager import collect_all_metrics
 from benchmarking.store_metrics import store_metrics
 
 # Base paths
@@ -29,54 +29,34 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEFAULT_MODEL = "model_best.pth"
 
 
+# ---------------------------------------------------
+# RUN INFERENCE
+# ---------------------------------------------------
 def run_inference(filepath, model):
-    usage_before = get_system_metrics()
-
     img = Image.open(filepath).convert("RGB")
     tensor = preprocess(img).unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
         logits = model(tensor)
-        probs = F.softmax(logits, dim=1)[0].cpu().tolist()
-        pred = int(torch.argmax(logits).item())
+        probabilities = F.softmax(logits, dim=1)[0].cpu().tolist()
+        prediction = int(torch.argmax(logits).item())
 
-    usage_after = get_system_metrics()
-
-    return {
-        "class": pred,
-        "probabilities": probs,
-        "usage": {
-            "before": usage_before,
-            "after": usage_after,
-        }
-    }
+    return prediction, probabilities, tensor
 
 
-def build_metrics_dict(job_id, extra: dict | None = None):
-    data = {
-        "job_id": job_id,
-        "system_usage": get_system_metrics(),
-        "registry": check_model_registry(),
-        "message_queue": check_message_queue(),
-    }
-    if extra:
-        data.update(extra)
-    return data
-
-
+# ---------------------------------------------------
+# NORMALIZE FILEPATH
+# ---------------------------------------------------
 def _normalize_filepath(raw_path: str) -> str:
-    """
-    Handle both:
-    - old jobs with relative path "uploads/xyz.png"
-    - new jobs with absolute path "/Users/.../uploads/xyz.png"
-    """
     if os.path.isabs(raw_path):
         return raw_path
 
-    # If it's relative (e.g. 'uploads/xyz.png'), force it under backend/uploads
     return os.path.abspath(os.path.join(BASE_DIR, raw_path))
 
 
+# ---------------------------------------------------
+# RABBITMQ CALLBACK
+# ---------------------------------------------------
 def callback(ch, method, properties, body):
     data = json.loads(body)
     job_id = data.get("job_id")
@@ -88,59 +68,73 @@ def callback(ch, method, properties, body):
     filepath = _normalize_filepath(raw_path)
     print(f"[Worker] Normalized filepath: {filepath}")
 
-    # If file does not exist, DON'T crash the worker → just log, store metrics, ack, and move on
+    # ---------------------------------------------------
+    # FILE NOT FOUND → do NOT crash worker
+    # ---------------------------------------------------
     if not os.path.exists(filepath):
-        print(f"[Worker] File not found, skipping job {job_id}: {filepath}")
+        print(f"[Worker] File not found, skipping job {job_id}")
 
-        metrics = build_metrics_dict(job_id, extra={
-            "error": "file_not_found",
-            "filepath": filepath,
-        })
+        metrics = collect_all_metrics(job_id)
+        metrics["error"] = "file_not_found"
+        metrics["filepath"] = filepath
+
         store_metrics(job_id, metrics)
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
+    # ---------------------------------------------------
+    # PROCESS INFERENCE
+    # ---------------------------------------------------
     try:
         model = get_model(DEFAULT_MODEL, DEVICE)
-        result = run_inference(filepath, model)
+        prediction, probabilities, tensor = run_inference(filepath, model)
 
-        metrics = build_metrics_dict(job_id)
+        # Now collect only Mukesh’s system metrics
+        metrics = collect_all_metrics(
+            job_id=job_id,
+            model=model,
+            tensor=tensor,
+            probabilities=probabilities
+        )
+
         store_metrics(job_id, metrics)
 
-        print(f"[Worker] Job {job_id} DONE → Class: {result['class']}")
+        print(f"[Worker] Job {job_id} DONE → Class: {prediction}")
 
     except Exception as e:
-        # Catch any unexpected error so the worker thread never dies
-        print(f"[Worker] Error while processing job {job_id}: {e}")
+        print(f"[Worker] Error during job {job_id}: {e}")
 
-        metrics = build_metrics_dict(job_id, extra={
-            "error": str(e),
-            "filepath": filepath,
-        })
+        metrics = collect_all_metrics(job_id)
+        metrics["error"] = str(e)
+        metrics["filepath"] = filepath
+
         store_metrics(job_id, metrics)
 
     finally:
-        # Always ack so bad jobs don't get re-delivered forever
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
+# ---------------------------------------------------
+# WORKER START
+# ---------------------------------------------------
 def start_worker():
-    """This function is called by main.py to start the worker in a background thread."""
     print("[Worker] Starting worker...")
     print(f"[Worker] BASE_DIR = {BASE_DIR}")
     print(f"[Worker] UPLOAD_DIR = {UPLOAD_DIR}")
 
     conn = get_connection()
-    ch = conn.channel()
-    ch.queue_declare(queue="model_queue", durable=True)
+    channel = conn.channel()
+    channel.queue_declare(queue="model_queue", durable=True)
 
     print("[Worker] Waiting for jobs...")
 
-    ch.basic_qos(prefetch_count=1)
-    ch.basic_consume(queue="model_queue", on_message_callback=callback)
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(
+        queue="model_queue",
+        on_message_callback=callback
+    )
 
-    ch.start_consuming()
+    channel.start_consuming()
 
 
 if __name__ == "__main__":
