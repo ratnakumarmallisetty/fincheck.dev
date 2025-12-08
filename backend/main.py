@@ -40,9 +40,6 @@ app.add_middleware(
 )
 
 
-# -----------------------------------
-# Routes
-# -----------------------------------
 @app.get("/")
 def home():
     return {"status": "running", "service": "backend"}
@@ -166,5 +163,5 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=False  # MUST BE OFF when using background worker threads
+        reload=False  
     )
