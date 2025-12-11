@@ -22,3 +22,5 @@ node_modules/
 # Next.js build
 .next/
 out/
+__pycache__/
+*.pyc
