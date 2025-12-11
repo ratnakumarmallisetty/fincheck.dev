@@ -1,36 +1,42 @@
-from benchmarking.system_metrics import get_system_metrics
-from benchmarking.calc_flops import calculate_flops
-from benchmarking.get_memory_footprint import get_memory_footprint
-from benchmarking.prediction_quality import compute_prediction_quality
-import torch
-from PIL import Image
-import torchvision.transforms as transforms
-import os
+# benchmarking/metrics_manager.py
+from backend.benchmarking.system_metrics import get_system_metrics
+from backend.benchmarking.inference_metrics import get_inference_metrics
+from backend.benchmarking.model_analysis import get_model_analysis
+from backend.benchmarking.prediction_quality import get_prediction_quality
 
 
-def preprocess_image(image_path):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])
-
-    img = Image.open(image_path).convert("RGB")
-    return transform(img).unsqueeze(0)
+__all__ = ["collect_all_metrics"]
 
 
-def collect_all_metrics(image_path: str):
-    # Preprocess image for prediction metrics
-    img_tensor = preprocess_image(image_path)
-
-    # --- METRICS ---
-    system_stats = get_system_metrics()
-    flops = calculate_flops()
-    memory = get_memory_footprint()
-    prediction_stats = compute_prediction_quality(img_tensor)
+def collect_all_metrics(job_id, model=None, tensor=None, probabilities=None):
+    """
+    Unified metrics aggregator across all team members.
+    """
 
     return {
-        "system_metrics": system_stats,
-        "model_flops": flops,
-        "memory_usage": memory,
-        "prediction_quality": prediction_stats
+        "job_id": job_id,
+
+        # Mukesh – System Metrics
+        "system_metrics": get_system_metrics(),
+
+        # Vikas – Inference Metrics
+        "inference_metrics": (
+            get_inference_metrics(model, tensor)
+            if model is not None and tensor is not None
+            else None
+        ),
+
+        # Albert – Model Analysis
+        "model_analysis": (
+            get_model_analysis(model)
+            if model is not None
+            else None
+        ),
+
+        # Rathna – Prediction Quality
+        "prediction_quality": (
+            get_prediction_quality(probabilities)
+            if probabilities is not None
+            else None
+        ),
     }

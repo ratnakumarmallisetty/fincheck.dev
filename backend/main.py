@@ -1,4 +1,4 @@
-# main.py
+# backend/main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -11,8 +11,10 @@ import pika
 from dotenv import load_dotenv
 load_dotenv()
 
-from msgqueue.connection import get_connection
-from msgqueue.worker1 import start_worker  
+from backend.msgqueue.connection import get_connection
+from backend.msgqueue.worker1 import start_worker
+
+
 
 
 # -----------------------------------
@@ -65,7 +67,7 @@ def publish_inference_job(job_id: str, filepath: str):
 
         msg = json.dumps({
             "job_id": job_id,
-            "filepath": filepath  # absolute path now
+            "filepath": filepath
         })
 
         ch.basic_publish(
@@ -102,24 +104,17 @@ async def upload_image(file: UploadFile = File(...)):
 
     await file.seek(0)
 
-    # Generate unique filename
     ext = file.filename.split(".")[-1]
     filename = f"{uuid.uuid4()}.{ext}"
-
-    # Absolute path fix
     saved_path = os.path.abspath(os.path.join(UPLOAD_DIR, filename))
 
     print("[Backend] Saving file at:", saved_path)
 
-    # Actual file save
     async with aiofiles.open(saved_path, "wb") as f:
         while chunk := await file.read(CHUNK):
             await f.write(chunk)
 
-    # Create job ID
     job_id = str(uuid.uuid4())
-
-    # Publish job with absolute filepath
     publish_inference_job(job_id, saved_path)
 
     return {
@@ -135,10 +130,6 @@ async def upload_image(file: UploadFile = File(...)):
 # Worker Startup
 # -----------------------------------
 def start_workers():
-    """
-    Start worker threads safely.
-    Extend this for worker2, worker3, GPU workers, etc.
-    """
     workers = [
         ("worker1", start_worker),
     ]
@@ -153,15 +144,15 @@ def start_workers():
 
 
 # -----------------------------------
-# Entry Point
+# Main Entry Point
 # -----------------------------------
 if __name__ == "__main__":
     start_workers()
 
     import uvicorn
     uvicorn.run(
-        "main:app",
+        "backend.main:app",
         host="127.0.0.1",
         port=8000,
-        reload=False  
+        reload=False
     )

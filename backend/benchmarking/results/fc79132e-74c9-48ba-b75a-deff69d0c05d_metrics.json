@@ -1,0 +1,16 @@
+{
+  "job_id": "fc79132e-74c9-48ba-b75a-deff69d0c05d",
+  "timestamp": "2025-12-11T03:43:05.742416",
+  "system_metrics": {
+    "cpu_percent": 26.2,
+    "ram_percent": 81.2,
+    "gpu": {
+      "gpu_available": false
+    }
+  },
+  "inference_metrics": null,
+  "model_analysis": null,
+  "prediction_quality": null,
+  "error": "Model model_best.pth not found in models",
+  "filepath": "/Users/mukesh/projects/fincheck.dev/backend/uploads/b941e54f-1681-49fb-b50c-62e4e9bcdbf9.jpeg"
+}
